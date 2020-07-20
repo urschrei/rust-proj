@@ -698,21 +698,21 @@ mod test {
         assert_almost_eq(t.y(), 1141263.01);
     }
     // This test is disabled by default as it requires network access
-    // #[test]
-    // fn test_network() {
-    //     let from = "EPSG:4326";
-    //     let to = "EPSG:4326+3855";
-    //     // off by default
-    //     assert_eq!(network_enabled(), false);
-    //     // switch it on and disable cache for subsequent calls
-    //     grid_cache_set_enable(false);
-    //     enable_network(true).unwrap();
-    //     let proj = Proj::new_known_crs(&from, &to, None).unwrap();
-    //     assert_eq!(network_enabled(), true);
-    //     let t = proj.convert(Point::new(40.0, -80.0)).unwrap();
-    //     assert_almost_eq(t.x(), 39.99999839);
-    //     assert_almost_eq(t.y(), -79.99999807);
-    // }
+    #[test]
+    fn test_network() {
+        let from = "EPSG:4326";
+        let to = "EPSG:4326+3855";
+        // off by default
+        assert_eq!(network_enabled(), false);
+        // switch it on and disable cache for subsequent calls
+        grid_cache_set_enable(false);
+        enable_network(true).unwrap();
+        let proj = Proj::new_known_crs(&from, &to, None).unwrap();
+        assert_eq!(network_enabled(), true);
+        let t = proj.convert(Point::new(40.0, -80.0)).unwrap();
+        assert_almost_eq(t.x(), 39.99999839);
+        assert_almost_eq(t.y(), -79.99999807);
+    }
     #[test]
     // Carry out a projection from geodetic coordinates
     fn test_projection() {
