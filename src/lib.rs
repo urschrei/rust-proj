@@ -63,12 +63,8 @@
 mod network;
 mod proj;
 
-pub use crate::proj::enable_network;
-pub use crate::proj::get_url_endpoint;
-pub use crate::proj::grid_cache_set_enable;
-pub use crate::proj::network_enabled;
-pub use crate::proj::set_url_endpoint;
 pub use crate::proj::Area;
 pub use crate::proj::Proj;
+pub use crate::proj::ProjContext;
 pub use crate::proj::ProjError;
 pub use crate::proj::Projinfo;

@@ -107,73 +107,72 @@ fn area_set_bbox(parea: *mut proj_sys::PJ_AREA, new_area: Option<Area>) {
     }
 }
 
-/// Enable or disable network access for [resource file download](https://proj.org/resource_files.html#where-are-proj-resource-files-looked-for).
-///
-/// This will configure network access for all **subsequent** `Proj` instances, but will **not** affect pre-existing instances.
-/// # Safety
-/// This method contains unsafe code.
-pub fn enable_network(enable: bool) -> Result<u8, ProjError> {
-    if enable {
-        let _ = match set_network_callbacks() {
+pub trait ProjNetwork {
+    fn c_ctx(&self) -> *mut PJ_CONTEXT;
+
+    /// Enable or disable network access for [resource file download](https://proj.org/resource_files.html#where-are-proj-resource-files-looked-for).
+    ///
+    /// This will configure network access for all **subsequent** `Proj` instances, but will **not** affect pre-existing instances.
+    /// # Safety
+    /// This method contains unsafe code.
+    fn enable_network(&self, enable: bool) -> Result<u8, ProjError> {
+        if enable {
+            let _ = match set_network_callbacks() {
+                1 => Ok(1),
+                _ => Err(ProjError::Network),
+            }?;
+        }
+        let enable = if enable { 1 } else { 0 };
+        match unsafe { proj_context_set_enable_network(self.c_ctx(), enable) } {
             1 => Ok(1),
             _ => Err(ProjError::Network),
-        }?;
+        }
     }
-    let enable = if enable { 1 } else { 0 };
-    let dctx: *mut PJ_CONTEXT = ptr::null_mut();
-    match unsafe { proj_context_set_enable_network(dctx, enable) } {
-        1 => Ok(1),
-        _ => Err(ProjError::Network),
+
+    /// Check whether network access for [resource file download](https://proj.org/resource_files.html#where-are-proj-resource-files-looked-for) is currently enabled or disabled.
+    ///
+    /// # Safety
+    /// This method contains unsafe code.
+    fn network_enabled(&self) -> bool {
+        let res = unsafe { proj_context_is_network_enabled(self.c_ctx()) };
+        match res {
+            1 => true,
+            _ => false,
+        }
     }
-}
 
-/// Check whether network access for [resource file download](https://proj.org/resource_files.html#where-are-proj-resource-files-looked-for) is currently enabled or disabled.
-///
-/// # Safety
-/// This method contains unsafe code.
-pub fn network_enabled() -> bool {
-    let dctx: *mut PJ_CONTEXT = ptr::null_mut();
-    let res = unsafe { proj_context_is_network_enabled(dctx) };
-    match res {
-        1 => true,
-        _ => false,
+    /// Enable or disable the local cache of grid chunks for all subsequent PROJ instances
+    ///
+    /// To avoid repeated network access, a local cache of downloaded chunks of grids is
+    /// implemented as SQLite3 database, cache.db, stored in the PROJ user writable directory.
+    /// This local caching is **enabled** by default.
+    /// The default maximum size of the cache is 300 MB, which is more than half of the total size
+    /// of grids available, at time of writing.
+    ///
+    /// # Safety
+    /// This method contains unsafe code.
+    fn grid_cache_set_enable(&self, enable: bool) {
+        let enable = if enable { 1 } else { 0 };
+        let _ = unsafe { proj_grid_cache_set_enable(self.c_ctx(), enable) };
     }
-}
 
-/// Enable or disable the local cache of grid chunks for all subsequent PROJ instances
-///
-/// To avoid repeated network access, a local cache of downloaded chunks of grids is
-/// implemented as SQLite3 database, cache.db, stored in the PROJ user writable directory.
-/// This local caching is **enabled** by default.
-/// The default maximum size of the cache is 300 MB, which is more than half of the total size
-/// of grids available, at time of writing.
-///
-/// # Safety
-/// This method contains unsafe code.
-pub fn grid_cache_set_enable(enable: bool) {
-    let enable = if enable { 1 } else { 0 };
-    let dctx: *mut PJ_CONTEXT = ptr::null_mut();
-    let _ = unsafe { proj_grid_cache_set_enable(dctx, enable) };
-}
+    /// Get the URL endpoint to query for remote grids
+    ///
+    /// # Safety
+    /// This method contains unsafe code.
+    fn get_url_endpoint(&self) -> Result<String, ProjError> {
+        unsafe { _string(proj_context_get_url_endpoint(self.c_ctx())) }
+    }
 
-/// Get the URL endpoint to query for remote grids
-///
-/// # Safety
-/// This method contains unsafe code.
-pub fn get_url_endpoint() -> Result<String, ProjError> {
-    let dctx: *mut PJ_CONTEXT = ptr::null_mut();
-    unsafe { _string(proj_context_get_url_endpoint(dctx)) }
-}
-
-/// Set the URL endpoint to query for remote grids for all subsequent PROJ instances
-///
-/// # Safety
-/// This method contains unsafe code.
-pub fn set_url_endpoint(endpoint: &str) -> Result<(), ProjError> {
-    let s = CString::new(endpoint)?;
-    let dctx: *mut PJ_CONTEXT = ptr::null_mut();
-    unsafe { proj_context_set_url_endpoint(dctx, s.as_ptr()) };
-    Ok(())
+    /// Set the URL endpoint to query for remote grids for all subsequent PROJ instances
+    ///
+    /// # Safety
+    /// This method contains unsafe code.
+    fn set_url_endpoint(&self, endpoint: &str) -> Result<(), ProjError> {
+        let s = CString::new(endpoint)?;
+        unsafe { proj_context_set_url_endpoint(self.c_ctx(), s.as_ptr()) };
+        Ok(())
+    }
 }
 
 enum Transformation {
@@ -195,8 +194,22 @@ pub struct Projinfo {
 /// A `PROJ` instance
 pub struct Proj {
     c_proj: *mut PJconsts,
-    ctx: *mut PJ_CONTEXT,
+    context: ProjContext,
     area: Option<*mut PJ_AREA>,
+}
+
+pub enum ProjContext {
+    DefaultContext,
+    Explicit(*mut PJ_CONTEXT),
+}
+
+impl ProjNetwork for ProjContext {
+    fn c_ctx(&self) -> *mut PJ_CONTEXT {
+        match *self {
+            ProjContext::DefaultContext => ptr::null_mut(),
+            ProjContext::Explicit(ctx) => ctx,
+        }
+    }
 }
 
 impl Proj {
@@ -225,7 +238,7 @@ impl Proj {
         } else {
             Some(Proj {
                 c_proj: new_c_proj,
-                ctx,
+                context: ProjContext::Explicit(ctx),
                 area: None,
             })
         }
@@ -293,7 +306,7 @@ impl Proj {
             };
             Some(Proj {
                 c_proj: normalised,
-                ctx,
+                context: ProjContext::Explicit(ctx),
                 area: Some(proj_area),
             })
         }
@@ -340,7 +353,7 @@ impl Proj {
         // We pass a null pointer as the context, as we want the search path to be
         // available to all contexts
         let dctx: *mut PJ_CONTEXT = ptr::null_mut();
-        unsafe { proj_context_set_search_paths(self.ctx, newlength, paths_p.as_ptr()) }
+        unsafe { proj_context_set_search_paths(self.c_ctx(), newlength, paths_p.as_ptr()) }
         unsafe { proj_context_set_search_paths(dctx, newlength, paths_p.as_ptr()) }
         Ok(())
     }
@@ -634,6 +647,12 @@ impl Proj {
     }
 }
 
+impl ProjNetwork for Proj {
+    fn c_ctx(&self) -> *mut PJ_CONTEXT {
+        self.context.c_ctx()
+    }
+}
+
 impl Drop for Proj {
     fn drop(&mut self) {
         unsafe {
@@ -641,7 +660,7 @@ impl Drop for Proj {
                 proj_area_destroy(area)
             }
             proj_destroy(self.c_proj);
-            proj_context_destroy(self.ctx);
+            proj_context_destroy(self.c_ctx());
             // NB do NOT call until proj_destroy and proj_context_destroy have both returned:
             // https://proj.org/development/reference/functions.html#c.proj_cleanup
             proj_cleanup()
@@ -680,10 +699,10 @@ mod test {
     }
     #[test]
     fn test_endpoint() {
-        let ep = get_url_endpoint().unwrap();
+        let ep = ProjContext::DefaultContext.get_url_endpoint().unwrap();
         assert_eq!(&ep, "https://cdn.proj.org");
-        set_url_endpoint("https://github.com/georust").unwrap();
-        let ep = get_url_endpoint().unwrap();
+        ProjContext::DefaultContext.set_url_endpoint("https://github.com/georust").unwrap();
+        let ep = ProjContext::DefaultContext.get_url_endpoint().unwrap();
         assert_eq!(&ep, "https://github.com/georust");
     }
     #[test]
@@ -698,17 +717,40 @@ mod test {
         assert_almost_eq(t.y(), 1141263.01);
     }
     // This test is disabled by default as it requires network access
+    // #[test]
+    // fn test_network_default_context() {
+    //     let from = "EPSG:4326";
+    //     let to = "EPSG:4326+3855";
+    //     // off by default
+    //     assert_eq!(ProjContext::DefaultContext.network_enabled(), false);
+    //     // switch it on and disable cache for subsequent calls
+    //     ProjContext::DefaultContext.grid_cache_set_enable(false);
+    //     ProjContext::DefaultContext.enable_network(true).unwrap();
+    //     let proj = Proj::new_known_crs(&from, &to, None).unwrap();
+    //     assert_eq!(ProjContext::DefaultContext.network_enabled(), true);
+    //     let t = proj.convert(Point::new(40.0, -80.0)).unwrap();
+    //     assert_almost_eq(t.x(), 39.99999839);
+    //     assert_almost_eq(t.y(), -79.99999807);
+    //     // cleanup global context for subsequent tests
+    //     // FIXME: disabling network currently fails
+    //     ProjContext::DefaultContext.enable_network(false).unwrap();
+    // }
+
     #[test]
-    fn test_network() {
+    fn test_network_explicit_context() {
         let from = "EPSG:4326";
         let to = "EPSG:4326+3855";
         // off by default
-        assert_eq!(network_enabled(), false);
-        // switch it on and disable cache for subsequent calls
-        grid_cache_set_enable(false);
-        enable_network(true).unwrap();
+        assert_eq!(ProjContext::DefaultContext.network_enabled(), false);
         let proj = Proj::new_known_crs(&from, &to, None).unwrap();
-        assert_eq!(network_enabled(), true);
+        // off by default
+        assert_eq!(proj.network_enabled(), false);
+        // switch it on and disable cache for subsequent calls
+        proj.grid_cache_set_enable(false);
+        proj.enable_network(true).unwrap();
+        assert_eq!(proj.network_enabled(), true);
+        // ensure explicit context does not affect default context
+        assert_eq!(ProjContext::DefaultContext.network_enabled(), false);
         let t = proj.convert(Point::new(40.0, -80.0)).unwrap();
         assert_almost_eq(t.x(), 39.99999839);
         assert_almost_eq(t.y(), -79.99999807);
