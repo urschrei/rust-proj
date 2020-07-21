@@ -1,18 +1,17 @@
 use geo_types::Point;
-use libc::c_int;
-use libc::{c_char, c_double};
+use libc::{c_char, c_double, c_int, c_void};
 use num_traits::Float;
 use proj_sys::{
     proj_area_create, proj_area_destroy, proj_area_set_bbox, proj_cleanup, proj_context_create,
     proj_context_destroy, proj_context_get_url_endpoint, proj_context_is_network_enabled,
-    proj_context_set_enable_network, proj_context_set_search_paths, proj_context_set_url_endpoint,
-    proj_create, proj_create_crs_to_crs, proj_destroy, proj_errno_string,
-    proj_grid_cache_set_enable, proj_info, proj_normalize_for_visualization, proj_pj_info,
-    proj_trans, proj_trans_array, PJconsts, PJ_AREA, PJ_CONTEXT, PJ_COORD, PJ_DIRECTION_PJ_FWD,
-    PJ_DIRECTION_PJ_INV, PJ_INFO, PJ_LP, PJ_XY,
+    proj_context_set_enable_network, proj_context_set_network_callbacks,
+    proj_context_set_search_paths, proj_context_set_url_endpoint, proj_create,
+    proj_create_crs_to_crs, proj_destroy, proj_errno_string, proj_grid_cache_set_enable, proj_info,
+    proj_normalize_for_visualization, proj_pj_info, proj_trans, proj_trans_array, PJconsts,
+    PJ_AREA, PJ_CONTEXT, PJ_COORD, PJ_DIRECTION_PJ_FWD, PJ_DIRECTION_PJ_INV, PJ_INFO, PJ_LP, PJ_XY,
 };
 
-use crate::network::set_network_callbacks;
+use crate::network::{network_close, network_get_header_value, network_open, network_read_range};
 use proj_sys::{proj_errno, proj_errno_reset};
 
 use std::ffi::CStr;
@@ -117,7 +116,7 @@ pub trait ProjNetwork {
     /// This method contains unsafe code.
     fn enable_network(&self, enable: bool) -> Result<u8, ProjError> {
         if enable {
-            let _ = match set_network_callbacks() {
+            let _ = match self.set_network_callbacks() {
                 1 => Ok(1),
                 _ => Err(ProjError::Network),
             }?;
@@ -172,6 +171,21 @@ pub trait ProjNetwork {
         let s = CString::new(endpoint)?;
         unsafe { proj_context_set_url_endpoint(self.c_ctx(), s.as_ptr()) };
         Ok(())
+    }
+
+    /// Set up and initialise the grid download callback functions for all subsequent PROJ contexts
+    fn set_network_callbacks(&self) -> i32 {
+        let ud: *mut c_void = ptr::null_mut();
+        unsafe {
+            proj_context_set_network_callbacks(
+                self.c_ctx(),
+                Some(network_open),
+                Some(network_close),
+                Some(network_get_header_value),
+                Some(network_read_range),
+                ud,
+            )
+        }
     }
 }
 

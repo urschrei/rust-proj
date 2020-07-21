@@ -341,19 +341,3 @@ fn _network_read_range(
     hd.headers = headers;
     Ok(contentlength)
 }
-
-/// Set up and initialise the grid download callback functions for all subsequent PROJ contexts
-pub(crate) fn set_network_callbacks() -> i32 {
-    let ud: *mut c_void = ptr::null_mut();
-    let dctx: *mut PJ_CONTEXT = ptr::null_mut();
-    unsafe {
-        proj_context_set_network_callbacks(
-            dctx,
-            Some(network_open),
-            Some(network_close),
-            Some(network_get_header_value),
-            Some(network_read_range),
-            ud,
-        )
-    }
-}
