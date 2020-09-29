@@ -96,7 +96,6 @@ fn build_from_source() -> Result<std::path::PathBuf, Box<dyn std::error::Error>>
     config.define("ENABLE_CURL", "OFF");
     config.define("ENABLE_TIFF", "ON");
     let proj = config.build();
-    eprintln!("Source build complete");
     // Tell cargo to tell rustc to link libproj, and where to find it
     // libproj will be built in $OUT_DIR/lib
     println!("cargo:rustc-link-lib=static=proj");
