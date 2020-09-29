@@ -10,6 +10,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+      - run: cmake --version
       - run: cargo install cargo-all-features
       - run: cargo build-all-features
       - run: cargo test-all-features
