@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     container:
-      image: georust/geo-ci:7c585a2c82d71df66152213b06a44cdfa88df0fb
+      image: georust/geo-ci:latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -22,7 +22,7 @@ jobs:
       run:
         working-directory: proj-sys
     container:
-      image: georust/geo-ci:7c585a2c82d71df66152213b06a44cdfa88df0fb
+      image: georust/geo-ci:latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
