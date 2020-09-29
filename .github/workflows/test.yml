@@ -1,32 +1,39 @@
 on: push
-name: Run tests
+name: proj ci
 jobs:
   proj:
     name: proj
-    runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    strategy:
+      matrix:
+        features: ["", "network", "bundled_proj", "bundled_proj network"]
     container:
       image: georust/geo-ci:latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-      - run: cmake --version
-      - run: cargo install cargo-all-features
-      - run: cargo build-all-features
-      - run: cargo test-all-features
+      - run: cargo build --features ${{ matrix.features }}
+      - run: cargo test --features ${{ matrix.features }}
 
   proj-sys:
     name: proj-sys
-    runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     defaults:
       run:
         working-directory: proj-sys
-    container:
-      image: georust/geo-ci:latest
+    container: ${{ matrix.container }}
+    strategy:
+      matrix:
+        features: ["", "bundled_proj"]
+        container: 
+          - image: "georust/geo-ci:latest"
+            env: 
+              _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 0
+          - image: "georust/geo-ci-without-system-proj:latest"
+            env: 
+              _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 1
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-      - run: cargo install cargo-all-features
-      - run: cargo build-all-features
-      - run: cargo test-all-features
+      - run: cargo build --features ${{ matrix.features }}
+      - run: cargo test --features ${{ matrix.features }}
