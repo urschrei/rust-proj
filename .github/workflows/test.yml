@@ -7,14 +7,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        features: ["", "network", "bundled_proj", "bundled_proj network"]
+        features: ["", "--features network", "--features bundled_proj", "--features \"bundled_proj network\""]
     container:
       image: georust/geo-ci:proj-ci
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-      - run: cargo build --features ${{ matrix.features }}
-      - run: cargo test --features ${{ matrix.features }}
+      - run: cargo build ${{ matrix.features }}
+      - run: cargo test ${{ matrix.features }}
 
   proj-sys:
     name: proj-sys
@@ -26,16 +26,24 @@ jobs:
     container: ${{ matrix.container }}
     strategy:
       matrix:
-        features: ["", "bundled_proj"]
-        container: 
-          - image: "georust/geo-ci:proj-ci"
-            env: 
-              _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 0
-          - image: "georust/geo-ci-without-system-proj:proj-ci"
-            env: 
-              _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 1
+        include:
+          - container:
+              image: "georust/geo-ci:proj-ci"
+              env:
+                _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 0
+            features: ""
+          - container:
+              image: "georust/geo-ci:proj-ci"
+              env:
+                _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 1
+            features: "--features bundled_proj"
+          - container:
+              image: "georust/geo-ci-without-system-proj:proj-ci"
+              env:
+                _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 1
+            features: ""
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-      - run: cargo build --features ${{ matrix.features }}
-      - run: cargo test --features ${{ matrix.features }}
+      - run: cargo build ${{ matrix.features }}
+      - run: cargo test ${{ matrix.features }}
