@@ -1,3 +1,6 @@
 status = [
-    "proj ci",
+    "proj ubuntu",
+    "proj-sys ubuntu",
+    "proj macos",
+    "proj-sys macos",
 ]
