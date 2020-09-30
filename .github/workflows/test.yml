@@ -9,7 +9,7 @@ jobs:
       matrix:
         features: ["", "--features network", "--features bundled_proj", "--features \"bundled_proj network\""]
     container:
-      image: georust/geo-ci:proj-ci
+      image: georust/proj-ci
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -28,17 +28,17 @@ jobs:
       matrix:
         include:
           - container:
-              image: "georust/geo-ci:proj-ci"
+              image: "georust/proj-ci:latest"
               env:
                 _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 0
             features: ""
           - container:
-              image: "georust/geo-ci:proj-ci"
+              image: "georust/proj-ci:latest"
               env:
                 _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 1
             features: "--features bundled_proj"
           - container:
-              image: "georust/geo-ci-without-system-proj:proj-ci"
+              image: "georust/proj-ci-without-system-proj:latest"
               env:
                 _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 1
             features: ""
