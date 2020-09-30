@@ -30,17 +30,17 @@ jobs:
           - container:
               image: "georust/proj-ci:latest"
               env:
-                _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 0
+                _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 1
             features: ""
           - container:
               image: "georust/proj-ci:latest"
               env:
-                _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 1
+                _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 0
             features: "--features bundled_proj"
           - container:
               image: "georust/proj-ci-without-system-proj:latest"
               env:
-                _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 1
+                _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 0
             features: ""
     steps:
       - name: Checkout repository
