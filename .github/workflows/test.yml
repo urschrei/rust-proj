@@ -4,6 +4,7 @@ jobs:
   proj:
     name: proj
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         features: ["", "network", "bundled_proj", "bundled_proj network"]
@@ -18,6 +19,7 @@ jobs:
   proj-sys:
     name: proj-sys
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: proj-sys
