@@ -1,8 +1,8 @@
 on: push
 name: proj ci
 jobs:
-  proj:
-    name: proj
+  proj-ubuntu:
+    name: proj ubuntu
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
     strategy:
@@ -16,8 +16,21 @@ jobs:
       - run: cargo build ${{ matrix.features }}
       - run: cargo test ${{ matrix.features }}
 
-  proj-sys:
-    name: proj-sys
+  proj-macos:
+    name: proj macos
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        features: ["", "--features network"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - run: cargo build ${{ matrix.features }}
+      - run: cargo test ${{ matrix.features }}
+
+  proj-sys-ubuntu:
+    name: proj-sys ubuntu
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
     defaults:
@@ -46,4 +59,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
       - run: cargo build ${{ matrix.features }}
+      - run: cargo test ${{ matrix.features }}
+
+  proj-sys-macos:
+    name: proj-sys macos
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: macos-latest
+    env:
+      _PROJ_SYS_TEST_EXPECT_BUILD_FROM_SRC: 0
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - run: brew install proj
       - run: cargo test ${{ matrix.features }}
