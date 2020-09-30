@@ -9,7 +9,7 @@ jobs:
       matrix:
         features: ["", "--features network", "--features bundled_proj", "--features \"bundled_proj network\""]
     container:
-      image: georust/proj-ci
+      image: "georust/proj-ci:latest"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
