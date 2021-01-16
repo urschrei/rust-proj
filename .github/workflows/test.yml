@@ -44,6 +44,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+      - run: rustc --version
       - run: cargo build ${{ matrix.features }}
       - run: cargo test ${{ matrix.features }}
 
